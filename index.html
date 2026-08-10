@@ -1,93 +1,21 @@
-<!doctype html>
-<html lang="ja">
-<head>
-<meta charset="utf-8">
-<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-<meta name="theme-color" content="#ffffff">
-<title>Photo Metadata 4:5</title>
+<!doctype html><html lang="ja"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>写真テンプレート</title>
 <style>
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500&display=swap');
-*{box-sizing:border-box}
-body{margin:0;background:#f4f4f4;color:#2A2A2A;font-family:Inter,-apple-system,BlinkMacSystemFont,"Helvetica Neue",Arial,sans-serif}
-main{width:min(760px,100%);margin:auto;padding:18px 14px 36px}
-h1{font-size:20px;font-weight:500;margin:0 0 5px}
-.desc{font-size:12px;color:#777;line-height:1.65;margin-bottom:16px}
-.drop{background:#fff;border:1.5px dashed #aaa;border-radius:12px;padding:25px 14px;text-align:center;cursor:pointer}
-.drop strong{display:block;font-size:15px;font-weight:500;margin-bottom:5px}.drop span{font-size:12px;color:#777}
-input[type=file]{display:none}
-.field{margin-top:12px}.field label{font-size:12px;color:#555;display:block;margin-bottom:5px}
-input[type=text]{width:100%;height:42px;border:1px solid #ccc;border-radius:8px;padding:0 11px;font:400 15px Inter,-apple-system,sans-serif;background:#fff}
-.actions{display:grid;grid-template-columns:1fr 1fr;gap:9px;margin-top:12px}
-button{height:43px;border-radius:8px;border:1px solid #ccc;background:#fff;color:#2A2A2A;font:400 14px Inter,-apple-system,sans-serif}
-button.primary{background:#2A2A2A;color:#fff;border-color:#2A2A2A}
-.info{background:#fff;border-radius:9px;margin-top:12px;padding:10px 11px;font-size:11px;color:#666;line-height:1.7}
-.preview{margin:16px auto 0;width:min(100%,520px)}canvas{display:block;width:100%;height:auto;background:#fff;box-shadow:0 5px 18px rgba(0,0,0,.12)}
-.note{text-align:center;font-size:10px;color:#888;margin-top:9px;line-height:1.5}
-@media(max-width:430px){.actions{grid-template-columns:1fr}}
-</style>
-</head>
-<body>
-<main>
-<h1>写真メタデータ 4:5</h1>
-<div class="desc">写真を選択するとEXIF情報を読み取り、4:5のテンプレートに自動配置します。写真は外部へアップロードされません。</div>
-<div id="drop" class="drop"><strong>写真を選択</strong><span>iPhone / iPadでは写真アプリから選べます<br>パソコンではドラッグ＆ドロップもできます</span></div>
-<input id="file" type="file" accept="image/jpeg,.jpg,.jpeg,image/heic,image/heif">
-<div class="field"><label for="place">撮影地</label><input id="place" type="text" value="Kunitachi, Tokyo" placeholder="例：Kunitachi, Tokyo"></div>
-<div class="field"><label for="date">日時を変更（任意）</label><input id="date" type="text" placeholder="空欄ならEXIFを使用"></div>
-<div class="actions"><button id="save" class="primary">JPEGを書き出す</button><button id="reset">リセット</button></div>
-<div id="info" class="info">写真がまだ選択されていません。</div>
-<div class="preview"><canvas id="canvas" width="4320" height="5400"></canvas></div>
-<div class="note">4320 × 5400 px / 4:5　写真 3400 × 4533 px　X=460 / Y=200<br>フォント：Inter　文字色：#2A2A2A　背景：#FFFFFF</div>
-</main>
-<script>
-const W=4320,H=5400,PX=460,PY=200,PW=3400,PH=4533,RIGHT=3860;
-const cv=document.getElementById('canvas'),ctx=cv.getContext('2d');
-const file=document.getElementById('file'),drop=document.getElementById('drop');
-const place=document.getElementById('place'),date=document.getElementById('date'),info=document.getElementById('info');
-let image=null,exif={},name='photo';
-
-drop.onclick=()=>file.click();
-file.onchange=()=>{if(file.files[0])load(file.files[0])};
-place.oninput=render;date.oninput=render;
-
-function load(f){
- name=f.name.replace(/\.[^.]+$/,'')||'photo';
- const url=URL.createObjectURL(f), im=new Image();
- im.onload=async()=>{image=im;exif=await exifRead(f);info.textContent=`カメラ：${exif.camera||'—'}　撮影日時：${fmt(exif.date)||'—'}　焦点距離：${exif.focal||'—'}　F値：${exif.fnum||'—'}　シャッター：${exif.exposure||'—'}　ISO：${exif.iso||'—'}`;render();URL.revokeObjectURL(url)};
- im.src=url;
-}
-function render(){
- ctx.fillStyle='#FFFFFF';ctx.fillRect(0,0,W,H);if(!image)return;
- const s=Math.min(PW/image.naturalWidth,PH/image.naturalHeight),dw=image.naturalWidth*s,dh=image.naturalHeight*s;
- ctx.drawImage(image,PX+(PW-dw)/2,PY+(PH-dh)/2,dw,dh);
- ctx.fillStyle='#2A2A2A';ctx.textAlign='left';ctx.textBaseline='alphabetic';
- ctx.font='500 56px Inter, -apple-system, sans-serif';ctx.fillText(exif.camera||'Unknown Camera',PX,4930);
- ctx.font='400 32px Inter, -apple-system, sans-serif';ctx.fillText(place.value.trim(),PX,5018);ctx.fillText(date.value.trim()||fmt(exif.date),PX,5080);
- const vals=[exif.focal||'',exif.fnum||'',exif.exposure||'',exif.iso||''];ctx.font='400 30px Inter, -apple-system, sans-serif';
- const widths=vals.map(v=>ctx.measureText(v).width), gap=300;let x=RIGHT-widths[3],xs=[0,0,0,x];
- for(let i=2;i>=0;i--){xs[i]=x-gap-widths[i];x=xs[i]}
- for(let i=0;i<4;i++)ctx.fillText(vals[i],xs[i],5050);
-}
-function fmt(s){if(!s)return'';const m=String(s).match(/^(\d{4})[:\-](\d{2})[:\-](\d{2})\s+(\d{2}):(\d{2})/);return m?`${m[1]}.${m[2]}.${m[3]}  ${m[4]}:${m[5]}`:String(s)}
-async function exifRead(f){return parse(new DataView(await f.arrayBuffer()))}
-function parse(dv){
- const o={};if(dv.byteLength<4||dv.getUint16(0,false)!==0xFFD8)return o;let p=2;
- while(p+4<dv.byteLength){if(dv.getUint8(p)!==0xFF){p++;continue}const m=dv.getUint8(p+1);if(m===0xDA||m===0xD9)break;const len=dv.getUint16(p+2,false);
-  if(m===0xE1&&p+10<dv.byteLength&&dv.getUint32(p+4,false)===0x45786966){try{return tiff(dv,p+10)}catch(e){return o}}p+=2+len}return o
-}
-function tiff(dv,b){
- const le=dv.getUint16(b,false)===0x4949,u16=o=>dv.getUint16(b+o,le),u32=o=>dv.getUint32(b+o,le);if(u16(2)!==42)return{};
- const ifd=u32(4),tags=read(ifd),out={};const str=t=>{if(!t)return'';if(t.type===2){let s='';for(let i=0;i<t.n;i++)s+=String.fromCharCode(dv.getUint8(t.p+i));return s.replace(/\0/g,'').trim()}return String(num(t)||'')};
- const num=t=>!t?0:t.type===3?dv.getUint16(t.p,t.le):t.type===4?dv.getUint32(t.p,t.le):t.type===9?dv.getInt32(t.p,t.le):dv.getUint8(t.p);
- const rat=t=>{if(!t)return 0;if(t.type===5){const n=dv.getUint32(t.p,t.le),d=dv.getUint32(t.p+4,t.le);return d?n/d:0}if(t.type===10){const n=dv.getInt32(t.p,t.le),d=dv.getInt32(t.p+4,t.le);return d?n/d:0}return num(t)};
- const trim=n=>Math.abs(n-Math.round(n))<1e-8?String(Math.round(n)):n.toFixed(2).replace(/0+$/,'').replace(/\.$/,'');
- out.camera=[str(tags[0x010F]),str(tags[0x0110])].filter(Boolean).join(' ');out.date=str(tags[0x0132]);
- const ep=num(tags[0x8769]);if(ep){const e=read(ep);out.date=str(e[0x9003])||str(e[0x9004])||out.date;const f=rat(e[0x829D]);if(f)out.fnum='f/'+trim(f);const sh=rat(e[0x829A]);if(sh)out.exposure=sh>=1?trim(sh)+'s':'1/'+Math.round(1/sh)+'s';const iso=num(e[0x8827]);if(iso)out.iso='ISO'+iso;const fl=rat(e[0x920A]);if(fl)out.focal=trim(fl)+'mm'}return out;
- function read(off){const a=b+off;if(a+2>dv.byteLength)return{};const n=dv.getUint16(a,le),r={},sz={1:1,2:1,3:2,4:4,5:8,7:1,9:4,10:8};for(let i=0;i<n;i++){const q=a+2+i*12;if(q+12>dv.byteLength)break;const id=dv.getUint16(q,le),type=dv.getUint16(q+2,le),count=dv.getUint32(q+4,le),size=(sz[type]||1)*count,p=size<=4?q+8:b+dv.getUint32(q+8,le);r[id]={type,n:count,p,le}}return r}
-}
-document.getElementById('save').onclick=()=>{if(!image){alert('先に写真を選択してください。');return}render();cv.toBlob(b=>{const a=document.createElement('a');a.href=URL.createObjectURL(b);a.download=name+'_metadata_4x5.jpg';a.click();setTimeout(()=>URL.revokeObjectURL(a.href),1000)},'image/jpeg',.96)};
-document.getElementById('reset').onclick=()=>{image=null;exif={};file.value='';info.textContent='写真がまだ選択されていません。';render()};
-render();
-</script>
-</body>
-</html>
+body{margin:0;background:#f2f2f2;color:#222;font-family:Inter,Arial,sans-serif}main{max-width:980px;margin:auto;padding:16px}.p{background:#fff;border-radius:16px;padding:14px;margin-bottom:14px;box-shadow:0 2px 14px #0001}.drop{border:2px dashed #aaa;border-radius:13px;padding:24px;text-align:center;background:#fafafa;cursor:pointer}.grid{display:grid;grid-template-columns:repeat(2,1fr);gap:10px;margin-top:12px}label{font-size:13px;color:#555}input,select,button{font:inherit}input[type=text],input[type=number],select{width:100%;margin-top:5px;padding:9px;border:1px solid #ccc;border-radius:9px;background:#fff}input[type=color]{width:100%;height:42px;margin-top:5px;padding:3px;border:1px solid #ccc;border-radius:9px}.actions{display:flex;gap:8px;flex-wrap:wrap;margin-top:12px}button{border:0;border-radius:10px;padding:11px 15px;background:#222;color:#fff}button.alt{background:#eee;color:#222}.hint{font-size:12px;color:#666;line-height:1.5;margin-top:10px}canvas{display:block;width:100%;max-width:760px;height:auto;margin:auto;box-shadow:0 4px 22px #0002}@media(max-width:650px){.grid{grid-template-columns:1fr}}
+</style></head><body><main><div class="p"><h2>写真テンプレート</h2>
+<div id="drop" class="drop">写真をここにドロップ<br>またはタップして選択</div><input id="file" type="file" accept="image/jpeg,image/png,image/webp" hidden>
+<div class="grid">
+<label>キャンバス比率<select id="ratio"><option value="34">3:4</option><option value="45">4:5</option></select></label>
+<label>1行目（カメラ名・題名）<input id="title"></label>
+<label>2行目（SOOC / EDITEDなど）<input id="sub" placeholder="表示しない場合は空欄"></label>
+<label>撮影地<input id="place"></label><label>日時<input id="date"></label><label>焦点距離<input id="focal"></label><label>F値<input id="fnum"></label><label>シャッター<input id="shutter"></label><label>ISO<input id="iso"></label>
+<label>文字サイズ<input id="size" type="number" value="54"></label><label>文字色<input id="color" type="color" value="#2A2A2A"></label><label>背景色<input id="bg" type="color" value="#FFFFFF"></label>
+</div><div class="actions"><button id="save">JPEGを書き出す</button><button id="reset" class="alt">リセット</button></div>
+<div class="hint">縦横は自動判定。3:4＝縦3600×4800／横4800×3600、4:5＝縦4320×5400／横5400×4320。メーカー名は表示せずModelをカメラ名として入力します。文字欄はすべて編集できます。</div></div>
+<div class="p"><canvas id="c"></canvas></div></main>
+<script src="https://cdn.jsdelivr.net/npm/exifr@7.1.3/dist/lite.umd.js"></script><script>
+const $=i=>document.getElementById(i),c=$("c"),x=c.getContext("2d");let im=null,ori="v";
+const L={34:{v:{w:3600,h:4800,pw:3022,ph:4030,px:289,py:178},h:{w:4800,h:3600,pw:4030,ph:3022,px:385,py:289}},45:{v:{w:4320,h:5400,pw:3400,ph:4533,px:460,py:200},h:{w:5400,h:4320,pw:4533,ph:3400,px:583,py:460}}};
+function draw(){if(!im)return;let q=L[$("ratio").value][ori];c.width=q.w;c.height=q.h;x.fillStyle=$("bg").value;x.fillRect(0,0,q.w,q.h);let s=Math.max(q.pw/im.width,q.ph/im.height),w=im.width*s,h=im.height*s;x.save();x.beginPath();x.rect(q.px,q.py,q.pw,q.ph);x.clip();x.drawImage(im,q.px+(q.pw-w)/2,q.py+(q.ph-h)/2,w,h);x.restore();let fs=+$("size").value||54,t=fs*1.18,l=q.px,r=q.px+q.pw,b=q.py+q.ph;x.fillStyle=$("color").value;x.textBaseline="alphabetic";x.font=t+"px Inter,Arial,sans-serif";x.fillText($("title").value,l,b+t+34);let sub=$("sub").value.trim(),o=0;if(sub){x.font=fs*.72+"px Inter,Arial,sans-serif";x.fillText(sub,l,b+t+82);o=35}x.font=fs+"px Inter,Arial,sans-serif";x.fillText($("place").value,l,b+t+105+o);x.fillText($("date").value,l,b+t+158+o);let a=[$("focal").value,$("fnum").value,$("shutter").value,$("iso").value].filter(Boolean);if(a.length){x.font=fs+"px Inter,Arial,sans-serif";let wds=a.map(v=>x.measureText(v).width),g=fs*2,total=wds.reduce((a,b)=>a+b,0)+g*(a.length-1),xx=r-total;if(xx<l){g=Math.max(fs*.6,(r-l-wds.reduce((a,b)=>a+b,0))/(a.length-1||1));xx=r-(wds.reduce((a,b)=>a+b,0)+g*(a.length-1))}a.forEach((v,i)=>{x.fillText(v,xx,b+t+132+o);xx+=wds[i]+g})}}
+async function load(f){["title","sub","place","date","focal","fnum","shutter","iso"].forEach(i=>$(i).value="");try{let e=await exifr.parse(f,{pick:["Model","DateTimeOriginal","FocalLength","FNumber","ExposureTime","ISO","latitude","longitude"]});if(e){$("title").value=e.Model||"";if(e.DateTimeOriginal){let d=new Date(e.DateTimeOriginal);$("date").value=isNaN(d)?String(e.DateTimeOriginal).replace("T"," ").slice(0,16):d.getFullYear()+"."+String(d.getMonth()+1).padStart(2,"0")+"."+String(d.getDate()).padStart(2,"0")+"  "+String(d.getHours()).padStart(2,"0")+":"+String(d.getMinutes()).padStart(2,"0")}if(e.FocalLength)$("focal").value=(Math.round(e.FocalLength*10)/10)+"mm";if(e.FNumber)$("fnum").value="f/"+(Math.round(e.FNumber*10)/10);if(e.ExposureTime)$("shutter").value=e.ExposureTime<1?"1/"+Math.round(1/e.ExposureTime)+"s":e.ExposureTime+"s";if(e.ISO)$("iso").value="ISO"+e.ISO;if(e.latitude!=null&&e.longitude!=null)$("place").value="GPS "+e.latitude.toFixed(5)+", "+e.longitude.toFixed(5)}}catch(e){}let u=URL.createObjectURL(f);im=new Image();im.onload=()=>{ori=im.height>=im.width?"v":"h";draw();URL.revokeObjectURL(u)};im.src=u}
+$("drop").onclick=()=>$("file").click();$("file").onchange=e=>e.target.files[0]&&load(e.target.files[0]);$("drop").ondragover=e=>e.preventDefault();$("drop").ondrop=e=>{e.preventDefault();e.dataTransfer.files[0]&&load(e.dataTransfer.files[0])};document.querySelectorAll("input,select").forEach(e=>e.oninput=draw);$("reset").onclick=()=>location.reload();$("save").onclick=()=>{if(!im)return alert("写真を選択してください。");let q=L[$("ratio").value][ori],a=document.createElement("a");a.download="photo-template-"+q.w+"x"+q.h+".jpg";a.href=c.toDataURL("image/jpeg",.95);a.click()};
+</script></body></html>
