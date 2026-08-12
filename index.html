@@ -1,0 +1,788 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>写真帖</title>
+  <!-- Google Fonts & Noto Serif / Sans / Inter / Roboto / etc. -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:ital,opsz,wght@0,14..32,100..900;1,14..32,100..900&family=Noto+Sans+JP:wght@100..900&family=Noto+Serif+JP:wght@200..900&family=Roboto+Mono:wght@100..700&family=Shippori+Mincho:wght@400;500;600;700;800&family=Zen+Old+Mincho:wght@400;700;900&display=swap" rel="stylesheet">
+  <!-- EXIF.js CDN -->
+  <script src="https://cdn.jsdelivr.net/npm/exif-js"></script>
+  <style>
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+    body {
+      font-family: "Yu Gothic", "游ゴシック", "YuGothic", "Yu Gothic Medium", "Noto Sans JP", sans-serif;
+      background-color: #f7f4ef;
+      color: #4a443f;
+      display: flex;
+      min-height: 100vh;
+      margin: 0;
+    }
+    
+    /* Layout for Desktop & Mobile responsive */
+    .app-container {
+      display: flex;
+      width: 100vw;
+      min-height: 100vh;
+    }
+
+    /* Sidebar controls */
+    .sidebar {
+      width: 420px;
+      min-width: 380px;
+      background: #fcfbfa;
+      border-right: 1px solid #e8e2d9;
+      display: flex;
+      flex-direction: column;
+      height: 100vh;
+      box-shadow: 2px 0 12px rgba(90, 75, 60, 0.05);
+      z-index: 10;
+    }
+    .sidebar-header {
+      padding: 24px 20px 20px;
+      border-bottom: 1px solid #e8e2d9;
+      background: #efe9df;
+      color: #3d352e;
+    }
+    .sidebar-header h1 {
+      font-size: 1.35rem;
+      font-weight: 700;
+      letter-spacing: 0.08em;
+      font-family: "Shippori Mincho", "Yu Mincho", serif;
+      color: #2c251e;
+    }
+    .sidebar-header p {
+      font-size: 0.8rem;
+      color: #786d63;
+      margin-top: 6px;
+      letter-spacing: 0.05em;
+    }
+    .sidebar-content {
+      flex: 1;
+      overflow-y: auto;
+      padding: 20px;
+    }
+
+    /* Sections */
+    .section {
+      margin-bottom: 24px;
+    }
+    .section-title {
+      font-size: 0.82rem;
+      font-weight: 700;
+      letter-spacing: 0.06em;
+      color: #786d63;
+      margin-bottom: 12px;
+      padding-bottom: 4px;
+      border-bottom: 1.5px solid #eae3d9;
+    }
+
+    /* Form Elements */
+    .form-group {
+      margin-bottom: 14px;
+    }
+    .form-group label {
+      display: block;
+      font-size: 0.78rem;
+      font-weight: 600;
+      color: #5a5047;
+      margin-bottom: 6px;
+    }
+    .form-control {
+      width: 100%;
+      padding: 8px 12px;
+      font-size: 0.85rem;
+      border: 1px solid #dcd4c8;
+      border-radius: 6px;
+      background: #ffffff;
+      color: #3d352e;
+      transition: all 0.2s;
+    }
+    .form-control:focus {
+      outline: none;
+      border-color: #a8947f;
+      background: #ffffff;
+      box-shadow: 0 0 0 3px rgba(168, 148, 127, 0.15);
+    }
+    .row {
+      display: flex;
+      gap: 10px;
+    }
+    .col {
+      flex: 1;
+    }
+
+    /* File Input Button */
+    .file-input-wrapper {
+      position: relative;
+      margin-bottom: 20px;
+    }
+    .file-input-btn {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      width: 100%;
+      padding: 12px;
+      background: #8c7a6b;
+      color: #ffffff;
+      border: none;
+      border-radius: 8px;
+      font-weight: 600;
+      font-size: 0.88rem;
+      cursor: pointer;
+      transition: background 0.2s;
+    }
+    .file-input-btn:hover {
+      background: #756557;
+    }
+    .file-input-hidden {
+      position: absolute;
+      top: 0;
+      left: 0;
+      opacity: 0;
+      width: 100%;
+      height: 100%;
+      cursor: pointer;
+    }
+
+    /* Color picker */
+    .color-picker-wrapper {
+      display: flex;
+      gap: 8px;
+      align-items: center;
+    }
+    .color-picker-wrapper input[type="color"] {
+      width: 38px;
+      height: 38px;
+      border: 1px solid #dcd4c8;
+      border-radius: 6px;
+      cursor: pointer;
+      padding: 2px;
+      background: #fff;
+    }
+
+    /* Export button sticky footer */
+    .sidebar-footer {
+      padding: 16px 20px;
+      border-top: 1px solid #e8e2d9;
+      background: #fcfbfa;
+    }
+    .btn-export {
+      width: 100%;
+      padding: 13px;
+      background: #5b6e58;
+      color: #ffffff;
+      border: none;
+      border-radius: 8px;
+      font-size: 0.92rem;
+      font-weight: 700;
+      cursor: pointer;
+      box-shadow: 0 2px 5px rgba(91, 110, 88, 0.2);
+      transition: background 0.2s;
+    }
+    .btn-export:hover {
+      background: #4a5a47;
+    }
+
+    /* Preview Area */
+    .main-preview {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      padding: 30px;
+      background: #f0ebe1;
+      position: relative;
+      overflow: auto;
+      min-height: 100vh;
+    }
+    .canvas-container {
+      max-width: 100%;
+      max-height: 100%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      box-shadow: 0 15px 30px rgba(70, 60, 50, 0.12);
+      background: #fff;
+      border-radius: 4px;
+      overflow: hidden;
+      transition: all 0.3s ease;
+    }
+    canvas {
+      display: block;
+      max-width: 100%;
+      max-height: calc(100vh - 80px);
+      object-fit: contain;
+    }
+
+    .placeholder-box {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      padding: 40px;
+      color: #94887b;
+      text-align: center;
+    }
+    .placeholder-box svg {
+      margin-bottom: 12px;
+      opacity: 0.6;
+    }
+
+    /* Responsive Design for Mobile / Tablet */
+    @media (max-width: 868px) {
+      .app-container {
+        flex-direction: column-reverse;
+      }
+      .sidebar {
+        width: 100%;
+        min-width: 100%;
+        height: auto;
+        border-right: none;
+        border-top: 1px solid #e8e2d9;
+      }
+      .main-preview {
+        min-height: 50vh;
+        padding: 20px 15px;
+      }
+      canvas {
+        max-height: 60vh;
+      }
+    }
+  </style>
+</head>
+<body>
+
+  <div class="app-container">
+    <!-- Sidebar -->
+    <div class="sidebar">
+      <div class="sidebar-header">
+        <h1>写真帖</h1>
+        <p>写真に、記憶と余白を。</p>
+      </div>
+
+      <div class="sidebar-content">
+        <!-- 1. 画像アップロード -->
+        <div class="file-input-wrapper">
+          <button class="file-input-btn">
+            写真を選択・変更する
+          </button>
+          <input type="file" id="imageInput" accept="image/*" class="file-input-hidden">
+        </div>
+
+        <!-- 2. フレーム設定 -->
+        <div class="section">
+          <div class="section-title">フレーム・比率設定</div>
+          
+          <div class="form-group">
+            <label for="aspectRatioSelect">フレームアスペクト比 Preset</label>
+            <select id="aspectRatioSelect" class="form-control">
+              <option value="auto_3:4" selected>自動 (3:4 / 4:3)</option>
+              <option value="auto_4:5">自動 (4:5 / 5:4)</option>
+              <option value="auto_A4">自動 (A4: 1:1.414)</option>
+              <option value="1:1">正方形 (1:1)</option>
+              <option value="custom">カスタム比率 (px指定)</option>
+            </select>
+          </div>
+
+          <div class="form-group row" id="customRatioGroup" style="display: none;">
+            <div class="col">
+              <label for="customWidth">フレーム幅 (px)</label>
+              <input type="number" id="customWidth" class="form-control" value="1200" step="10">
+            </div>
+            <div class="col">
+              <label for="customHeight">フレーム高さ (px)</label>
+              <input type="number" id="customHeight" class="form-control" value="1600" step="10">
+            </div>
+          </div>
+
+          <div class="form-group row">
+            <div class="col">
+              <label for="paddingX">左右余白 (px)</label>
+              <input type="number" id="paddingX" class="form-control" value="100" min="0" step="5">
+            </div>
+            <div class="col">
+              <label for="paddingTop">上部余白 (px)</label>
+              <input type="number" id="paddingTop" class="form-control" value="100" min="0" step="5">
+            </div>
+          </div>
+
+          <div class="form-group">
+            <label for="bgColor">背景色</label>
+            <div class="color-picker-wrapper">
+              <input type="color" id="bgColorPicker" value="#ffffff">
+              <input type="text" id="bgColorHex" class="form-control" value="#ffffff" placeholder="#ffffff">
+            </div>
+          </div>
+        </div>
+
+        <!-- 3. 文字・フォント設定 -->
+        <div class="section">
+          <div class="section-title">文字スタイル・配置設定</div>
+          
+          <div class="form-group">
+            <label for="fontFamily">フォント（書体）</label>
+            <select id="fontFamily" class="form-control">
+              <optgroup label="サンセリフ / ゴシック体">
+                <option value="Inter" selected>Inter (デフォルト)</option>
+                <option value="Noto Sans JP">Noto Sans JP (ゴシック)</option>
+                <option value="Yu Gothic, 游ゴシック">游ゴシック</option>
+              </optgroup>
+              <optgroup label="明朝体 / セリフ">
+                <option value="Shippori Mincho, serif">しっぽり明朝 (Shippori Mincho)</option>
+                <option value="Zen Old Mincho, serif">Zen Old Mincho</option>
+                <option value="Noto Serif JP, serif">Noto Serif JP</option>
+                <option value="Georgia, serif">Georgia</option>
+              </optgroup>
+              <optgroup label="等幅 / モノスペース">
+                <option value="Roboto Mono, monospace">Roboto Mono</option>
+                <option value="Courier New, monospace">Courier New</option>
+              </optgroup>
+            </select>
+          </div>
+
+          <!-- カメラ名の文字サイズ・ウェイト -->
+          <div class="form-group row">
+            <div class="col">
+              <label for="cameraFontSize">カメラ名 サイズ (px)</label>
+              <input type="number" id="cameraFontSize" class="form-control" value="28" min="8" max="100">
+            </div>
+            <div class="col">
+              <label for="cameraFontWeight">カメラ名 太さ</label>
+              <select id="cameraFontWeight" class="form-control">
+                <option value="300">Light (300)</option>
+                <option value="400">Regular (400)</option>
+                <option value="500">Medium (500)</option>
+                <option value="600">SemiBold (600)</option>
+                <option value="700" selected>Bold (700)</option>
+              </select>
+            </div>
+          </div>
+
+          <!-- 詳細情報の文字サイズ・ウェイト -->
+          <div class="form-group row">
+            <div class="col">
+              <label for="metaFontSize">詳細情報 サイズ (px)</label>
+              <input type="number" id="metaFontSize" class="form-control" value="18" min="8" max="100">
+            </div>
+            <div class="col">
+              <label for="metaFontWeight">詳細情報 太さ</label>
+              <select id="metaFontWeight" class="form-control">
+                <option value="300">Light (300)</option>
+                <option value="400" selected>Regular (400)</option>
+                <option value="500">Medium (500)</option>
+                <option value="600">SemiBold (600)</option>
+                <option value="700">Bold (700)</option>
+              </select>
+            </div>
+          </div>
+
+          <!-- 行間設定 -->
+          <div class="form-group">
+            <label for="lineGap">左側情報（カメラ・場所・日時）の行間 (px)</label>
+            <input type="number" id="lineGap" class="form-control" value="8" min="0" max="100">
+          </div>
+
+          <!-- 文字色 -->
+          <div class="form-group row">
+            <div class="col">
+              <label for="cameraColorPicker">カメラ名 カラー</label>
+              <input type="color" id="cameraColorPicker" class="form-control" value="#111827" style="height:38px; padding:2px;">
+            </div>
+            <div class="col">
+              <label for="metaColorPicker">詳細情報 カラー</label>
+              <input type="color" id="metaColorPicker" class="form-control" value="#4b5563" style="height:38px; padding:2px;">
+            </div>
+          </div>
+
+          <!-- 位置移動 (位置オフセット) -->
+          <div class="section-title" style="margin-top: 16px;">位置調整 (px移動)</div>
+          
+          <div class="form-group row">
+            <div class="col">
+              <label for="leftOffsetX">左側テキスト X移動 (px)</label>
+              <input type="number" id="leftOffsetX" class="form-control" value="0" step="5" placeholder="0">
+            </div>
+            <div class="col">
+              <label for="leftOffsetY">左側テキスト Y移動 (px)</label>
+              <input type="number" id="leftOffsetY" class="form-control" value="0" step="5" placeholder="0">
+            </div>
+          </div>
+
+          <div class="form-group row">
+            <div class="col">
+              <label for="rightOffsetX">右側テキスト X移動 (px)</label>
+              <input type="number" id="rightOffsetX" class="form-control" value="0" step="5" placeholder="0">
+            </div>
+            <div class="col">
+              <label for="rightOffsetY">右側テキスト Y移動 (px)</label>
+              <input type="number" id="rightOffsetY" class="form-control" value="0" step="5" placeholder="0">
+            </div>
+          </div>
+        </div>
+
+        <!-- 4. メタデータ編集 (EXIF) -->
+        <div class="section">
+          <div class="section-title">情報編集 (左側表示)</div>
+          <div class="form-group">
+            <label for="cameraModel">カメラ名</label>
+            <input type="text" id="cameraModel" class="form-control" placeholder="例: KODAK PIXPRO FZ55">
+          </div>
+          <div class="form-group">
+            <label for="locationText">撮影場所</label>
+            <input type="text" id="locationText" class="form-control" placeholder="例: Kunitachi, Tokyo">
+          </div>
+          <div class="form-group">
+            <label for="dateText">撮影日時</label>
+            <input type="text" id="dateText" class="form-control" placeholder="例: 2020.08.04 15:13">
+          </div>
+
+          <div class="section-title" style="margin-top: 16px;">撮影設定 (右側表示)</div>
+          <div class="form-group row">
+            <div class="col">
+              <label for="focalLength">焦点距離</label>
+              <input type="text" id="focalLength" class="form-control" placeholder="例: 28mm">
+            </div>
+            <div class="col">
+              <label for="aperture">F値</label>
+              <input type="text" id="aperture" class="form-control" placeholder="例: f/3.9">
+            </div>
+          </div>
+          <div class="form-group row">
+            <div class="col">
+              <label for="shutterSpeed">SS (シャッター速度)</label>
+              <input type="text" id="shutterSpeed" class="form-control" placeholder="例: 1/240s">
+            </div>
+            <div class="col">
+              <label for="isoSpeed">ISO感度</label>
+              <input type="text" id="isoSpeed" class="form-control" placeholder="例: ISO100">
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="sidebar-footer">
+        <button id="exportBtn" class="btn-export">高画質JPEGを保存</button>
+      </div>
+    </div>
+
+    <!-- Preview Area -->
+    <div class="main-preview">
+      <div class="canvas-container" id="canvasWrapper">
+        <canvas id="photoCanvas" style="display:none;"></canvas>
+        <div id="placeholder" class="placeholder-box">
+          <svg width="48" height="48" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"></path>
+          </svg>
+          <p>写真をアップロードすると<br>ここにリアルタイムプレビューが表示されます</p>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    // Elements
+    const imageInput = document.getElementById('imageInput');
+    const canvas = document.getElementById('photoCanvas');
+    const placeholder = document.getElementById('placeholder');
+    const ctx = canvas.getContext('2d');
+
+    // Controls
+    const aspectRatioSelect = document.getElementById('aspectRatioSelect');
+    const customRatioGroup = document.getElementById('customRatioGroup');
+    const customWidthInput = document.getElementById('customWidth');
+    const customHeightInput = document.getElementById('customHeight');
+    const paddingXInput = document.getElementById('paddingX');
+    const paddingTopInput = document.getElementById('paddingTop');
+    
+    const bgColorPicker = document.getElementById('bgColorPicker');
+    const bgColorHex = document.getElementById('bgColorHex');
+
+    const fontFamilySelect = document.getElementById('fontFamily');
+    const cameraFontSizeInput = document.getElementById('cameraFontSize');
+    const cameraFontWeightSelect = document.getElementById('cameraFontWeight');
+    const metaFontSizeInput = document.getElementById('metaFontSize');
+    const metaFontWeightSelect = document.getElementById('metaFontWeight');
+    const lineGapInput = document.getElementById('lineGap');
+    const cameraColorPicker = document.getElementById('cameraColorPicker');
+    const metaColorPicker = document.getElementById('metaColorPicker');
+
+    const leftOffsetXInput = document.getElementById('leftOffsetX');
+    const leftOffsetYInput = document.getElementById('leftOffsetY');
+    const rightOffsetXInput = document.getElementById('rightOffsetX');
+    const rightOffsetYInput = document.getElementById('rightOffsetY');
+
+    const cameraModelInput = document.getElementById('cameraModel');
+    const locationTextInput = document.getElementById('locationText');
+    const dateTextInput = document.getElementById('dateText');
+    const focalLengthInput = document.getElementById('focalLength');
+    const apertureInput = document.getElementById('aperture');
+    const shutterSpeedInput = document.getElementById('shutterSpeed');
+    const isoSpeedInput = document.getElementById('isoSpeed');
+
+    const exportBtn = document.getElementById('exportBtn');
+
+    let currentImage = null;
+
+    // Color sync
+    bgColorPicker.addEventListener('input', (e) => {
+      bgColorHex.value = e.target.value;
+      render();
+    });
+    bgColorHex.addEventListener('input', (e) => {
+      bgColorPicker.value = e.target.value;
+      render();
+    });
+
+    // Inputs change listeners (Real-time update)
+    const allControls = [
+      aspectRatioSelect, customWidthInput, customHeightInput, paddingXInput, paddingTopInput,
+      fontFamilySelect, cameraFontSizeInput, cameraFontWeightSelect, metaFontSizeInput, metaFontWeightSelect,
+      lineGapInput, cameraColorPicker, metaColorPicker,
+      leftOffsetXInput, leftOffsetYInput, rightOffsetXInput, rightOffsetYInput,
+      cameraModelInput, locationTextInput, dateTextInput, focalLengthInput, apertureInput, shutterSpeedInput, isoSpeedInput
+    ];
+
+    allControls.forEach(ctrl => {
+      ctrl.addEventListener('input', () => {
+        if (ctrl === aspectRatioSelect) {
+          customRatioGroup.style.display = (ctrl.value === 'custom') ? 'flex' : 'none';
+        }
+        render();
+      });
+    });
+
+    // Handle Image Upload
+    imageInput.addEventListener('change', (e) => {
+      const file = e.target.files[0];
+      if (!file) return;
+
+      const reader = new FileReader();
+      reader.onload = (event) => {
+        const img = new Image();
+        img.onload = () => {
+          currentImage = img;
+          canvas.style.display = 'block';
+          placeholder.style.display = 'none';
+
+          // Try parse EXIF
+          EXIF.getData(file, function() {
+            const make = EXIF.getTag(this, "Make") || "";
+            const model = EXIF.getTag(this, "Model") || "";
+            let fullModel = model;
+            if (make && !model.toLowerCase().includes(make.toLowerCase())) {
+              fullModel = `${make} ${model}`;
+            }
+            if (fullModel) cameraModelInput.value = fullModel.trim();
+
+            const dateTime = EXIF.getTag(this, "DateTimeOriginal") || EXIF.getTag(this, "DateTime");
+            if (dateTime) {
+              const parts = dateTime.split(" ");
+              if (parts.length === 2) {
+                const dateParts = parts[0].replace(/:/g, ".");
+                const timeParts = parts[1].substring(0, 5);
+                dateTextInput.value = `${dateParts} ${timeParts}`;
+              } else {
+                dateTextInput.value = dateTime;
+              }
+            }
+
+            const focal = EXIF.getTag(this, "FocalLength");
+            if (focal) focalLengthInput.value = `${Math.round(focal)}mm`;
+
+            const fnum = EXIF.getTag(this, "FNumber");
+            if (fnum) apertureInput.value = `f/${fnum}`;
+
+            const expTime = EXIF.getTag(this, "ExposureTime");
+            if (expTime) {
+              if (expTime < 1) {
+                shutterSpeedInput.value = `1/${Math.round(1 / expTime)}s`;
+              } else {
+                shutterSpeedInput.value = `${expTime}s`;
+              }
+            }
+
+            const iso = EXIF.getTag(this, "ISOSpeedRatings");
+            if (iso) isoSpeedInput.value = `ISO${iso}`;
+
+            render();
+          });
+        };
+        img.src = event.target.result;
+      };
+      reader.readAsDataURL(file);
+    });
+
+    // Render Canvas in Realtime
+    function render() {
+      if (!currentImage) return;
+
+      // Ensure Fonts loaded before render
+      document.fonts.ready.then(() => {
+        drawFrame();
+      });
+    }
+
+    function drawFrame() {
+      const imgW = currentImage.width;
+      const imgH = currentImage.height;
+      const isPortrait = imgH >= imgW;
+
+      // Padding
+      const padX = parseInt(paddingXInput.value) || 0;
+      const padTop = parseInt(paddingTopInput.value) || 0;
+
+      const photoWidth = imgW;
+      const photoHeight = imgH;
+
+      // Compute Frame Size
+      let frameWidth, frameHeight;
+      const preset = aspectRatioSelect.value;
+
+      if (preset === 'custom') {
+        frameWidth = parseInt(customWidthInput.value) || (photoWidth + padX * 2);
+        frameHeight = parseInt(customHeightInput.value) || (photoHeight + padTop * 2);
+      } else {
+        let ratioVal = 3 / 4; 
+        if (preset === 'auto_3:4') {
+          ratioVal = isPortrait ? (4 / 3) : (3 / 4);
+        } else if (preset === 'auto_4:5') {
+          ratioVal = isPortrait ? (5 / 4) : (4 / 5);
+        } else if (preset === 'auto_A4') {
+          ratioVal = isPortrait ? 1.414 : (1 / 1.414);
+        } else if (preset === '1:1') {
+          ratioVal = 1.0;
+        }
+
+        frameWidth = photoWidth + padX * 2;
+        const minFrameHeight = frameWidth * ratioVal;
+        const requiredHeight = photoHeight + padTop + padTop; 
+        frameHeight = Math.max(minFrameHeight, requiredHeight);
+      }
+
+      // Canvas Resolution
+      canvas.width = frameWidth;
+      canvas.height = frameHeight;
+
+      // Fill Background
+      ctx.fillStyle = bgColorHex.value;
+      ctx.fillRect(0, 0, frameWidth, frameHeight);
+
+      // Draw Image (Centered Horizontally)
+      const photoX = (frameWidth - photoWidth) / 2;
+      const photoY = padTop;
+      ctx.drawImage(currentImage, photoX, photoY, photoWidth, photoHeight);
+
+      // Text Area Boundaries
+      const photoBottomY = photoY + photoHeight;
+      const frameBottomY = frameHeight;
+      const bottomSpaceHeight = frameBottomY - photoBottomY;
+
+      const fontName = fontFamilySelect.value;
+      const cameraFontSize = parseInt(cameraFontSizeInput.value) || 28;
+      const cameraWeight = cameraFontWeightSelect.value;
+      const metaFontSize = parseInt(metaFontSizeInput.value) || 18;
+      const metaWeight = metaFontWeightSelect.value;
+
+      const lineGap = parseInt(lineGapInput.value) !== NaN ? parseInt(lineGapInput.value) : 8;
+
+      const leftXOffset = parseInt(leftOffsetXInput.value) || 0;
+      const leftYOffset = parseInt(leftOffsetYInput.value) || 0;
+      const rightXOffset = parseInt(rightOffsetXInput.value) || 0;
+      const rightYOffset = parseInt(rightOffsetYInput.value) || 0;
+
+      // Prepare text values
+      const cameraText = cameraModelInput.value;
+      const locationText = locationTextInput.value;
+      const dateText = dateTextInput.value;
+
+      const focal = focalLengthInput.value;
+      const aperture = apertureInput.value;
+      const shutter = shutterSpeedInput.value;
+      const iso = isoSpeedInput.value;
+
+      const exifArray = [focal, aperture, shutter, iso].filter(item => item && item.trim() !== "");
+      const exifText = exifArray.join("    ");
+
+      // Calculate vertical placement for text block
+      let leftBlockHeight = 0;
+      if (cameraText) leftBlockHeight += cameraFontSize;
+      if (locationText) leftBlockHeight += (leftBlockHeight > 0 ? lineGap : 0) + metaFontSize;
+      if (dateText) leftBlockHeight += (leftBlockHeight > 0 ? lineGap : 0) + metaFontSize;
+
+      const startY = photoBottomY + (bottomSpaceHeight - leftBlockHeight) / 2 + leftYOffset;
+      const startX = photoX + leftXOffset;
+
+      // Draw Left Text
+      let currentY = startY;
+      
+      if (cameraText) {
+        ctx.font = `${cameraWeight} ${cameraFontSize}px ${fontName}`;
+        ctx.fillStyle = cameraColorPicker.value;
+        ctx.textBaseline = 'top';
+        ctx.textAlign = 'left';
+        ctx.fillText(cameraText, startX, currentY);
+        currentY += cameraFontSize + lineGap;
+      }
+
+      ctx.font = `${metaWeight} ${metaFontSize}px ${fontName}`;
+      ctx.fillStyle = metaColorPicker.value;
+
+      if (locationText) {
+        ctx.textBaseline = 'top';
+        ctx.textAlign = 'left';
+        ctx.fillText(locationText, startX, currentY);
+        currentY += metaFontSize + lineGap;
+      }
+
+      if (dateText) {
+        ctx.textBaseline = 'top';
+        ctx.textAlign = 'left';
+        ctx.fillText(dateText, startX, currentY);
+      }
+
+      // Draw Right EXIF Text
+      if (exifText) {
+        ctx.font = `${metaWeight} ${metaFontSize}px ${fontName}`;
+        ctx.fillStyle = metaColorPicker.value;
+        ctx.textBaseline = 'middle';
+        ctx.textAlign = 'right';
+        const rightY = photoBottomY + bottomSpaceHeight / 2 + rightYOffset;
+        const rightX = photoX + photoWidth + rightXOffset;
+        ctx.fillText(exifText, rightX, rightY);
+      }
+    }
+
+    // Export JPEG using Blob (Fix download issue)
+    exportBtn.addEventListener('click', () => {
+      if (!currentImage) {
+        alert("写真を先に選択してください。");
+        return;
+      }
+      
+      canvas.toBlob((blob) => {
+        if (!blob) {
+          alert("画像の生成に失敗しました。");
+          return;
+        }
+        const url = URL.createObjectURL(blob);
+        const link = document.createElement('a');
+        link.download = `photo_frame_${Date.now()}.jpg`;
+        link.href = url;
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+        setTimeout(() => URL.revokeObjectURL(url), 1000);
+      }, 'image/jpeg', 0.95);
+    });
+  </script>
+</body>
+</html>
